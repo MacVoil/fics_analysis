@@ -1,0 +1,29 @@
+---
+title: "Visualizando FICs Colombia"
+format: html
+editor: visual
+---
+
+```{css, echo = FALSE}
+p {
+  text-align: justify
+}
+```
+
+En este documento, mostraremos como visualizar los datos de los Fondos de Inversión Colectiva (FICs) proporcionados por la Superintendencia Financiera de Colombia (SFC), usando herramientas de Business Intelligence (BI) como R y PowerBI con el objetivo de hacer más fácil el análisis de los mismos.
+
+## Problemática
+
+Al momento de crear este documento existen alrededor de 240 FICs activos, ofrecidos por 30 compañías, esto hace que una persona que quiera invertir en uno de estos fondos tenga que realizar una investigación ardua entrando a algunas paginas de estas compañías o contactando a asesores financieros de las mismas para poder hacerse a una idea de que fondos se ajustan a sus requerimientos de rentabilidad y riesgo, y aun así no podrá tener una visión completa de las alternativas que tiene disponibles.
+
+Para poder tener un lugar centralizado donde el publico pueda ver información básica de los fondos la SFC pone a disposición el **Reporte de Rentabilidades de los Fondos de Inversión Colectiva** donde se muestra el histórico de número de inversionistas, valor del fondo, valor de la unidad y rentabilidad, para que podamos tener mejores criterios al escoger un fondo para invertir. Desafortunadamente la forma de presentación de este reporte es por medio de una tabla la cual no es amigable de manipular como por ejemplo lo comentan desde el canal ACORRINVERSIONES de youtube:
+
+{{< video https://youtu.be/bI3mZXxhYWI start="81" >}}
+
+{{<iframe title="Sample Report Demo" width="1140" height="541.25" src="https://playground.powerbi.com/sampleReportEmbed" frameborder="0" allowFullScreen="true">
+
+</iframe>}}
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+```
