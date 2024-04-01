@@ -26,7 +26,7 @@ En este documento, mostraré como visualizar los datos de los Fondos de Inversi�
 
 En caso de que no sepas que es un Fondos de Inversión Colectiva a continuación te dejo este vídeo de Youtube de Karem Suarez donde hace una breve explicación de este tipo de inversiones.
 
-{{< video https://youtu.be/OP-qQxDomE0 >}}
+{{< video https://youtu.be/OP-qQxDomE0 width="750" height="422" >}}
 
 ## Problemática
 
@@ -34,7 +34,7 @@ Al momento de crear este documento existen alrededor de 240 FICs activos, ofreci
 
 Para poder tener un lugar centralizado donde el publico pueda ver información básica de los fondos la SFC pone a disposición el **Reporte de Rentabilidades de los Fondos de Inversión Colectiva** donde se muestra el histórico de número de inversionistas, valor del fondo, valor de la unidad y rentabilidad, para que podamos tener mejores criterios al escoger un fondo para invertir. Desafortunadamente la forma de presentación de este reporte es por medio de una tabla la cual no es amigable de manipular como lo comentan desde el canal ACORRINVERSIONES en una sección de su canal de Youtube:
 
-{{< video https://youtu.be/bI3mZXxhYWI start="81" >}}
+{{< video https://youtu.be/bI3mZXxhYWI start="81" width="750" height="422" >}}
 
 ## Objetivo
 
@@ -69,9 +69,95 @@ Miremos un ejemplo de la repuesta de una consulta al conjunto de datos
 
 ```{r warning=FALSE, message=FALSE}
 
-str_glue("https://www.datos.gov.co/resource/qhpu-8ixx.json?$LIMIT=1") %>% 
-        URLencode() %>% 
-    fromJSON() %>% 
+str_glue("https://www.datos.gov.co/resource/qhpu-8ixx.json?$LIMIT=1") %>%
+        URLencode() %>%
+    fromJSON() %>%
     kable()
 
 ```
+
+Observamos que el los datos comienza con el campo "fecha_corte", el cual indica el día de la observación. A continuación, encontramos campos que contienen tanto códigos como texto, los cuales describen las características del fondo, el tipo de entidad que lo administra, el nombre de la entidad, el tipo de fondo, el nombre del fondo y la participación. Por último, se presentan registros relacionados con el día de observación, incluyendo rendimientos, valor de pre-cierre y cierre del fondo, transacciones realizadas por los inversionistas (abonos, retiros o cancelaciones), el número de inversionistas, el número de participaciones y el valor de las operaciones, así como las rentabilidades en varios periodos de tiempo.
+
+Para la extracción sobre los datos anteriores vamos a crear dos tablas, una de hechos y una de dimensiones.
+
+Para los registros de hechos, incluiremos la fecha, y todos los registros pertenecientes a los dos últimos años, filtrando los subtipos de negocio que no sean 7, que hace referencia a Fondos de Capital Privado, que son otro tipo de inversión ajena a este documento. Asimismo se descargaran los códigos de entidad, negocio y participación, todos los códigos que representen un nombre los concatenaremos para formar un código para luego asociar con la tabla de dimensiones. Igualmente traeremos los datos de rendimientos abonados, cierre y pre-cierre, aportes, retiros, anulaciones y el número de inversionistas. No se incluirá el valor de la participación ni el número de participaciones debido a que los montos involucrados son considerablemente grandes en comparación, siendo más pertinente realizar cálculos basados en los valores de cierre. Asimismo, las rentabilidades no se traen, ya que las proporcionadas están asociadas a fechas específicas, mientras que calcularlas podemos obtener los rendimientos para cualquier periodo de tiempo deseado.
+
+Nuestras 6 primeras observaciones de la tabla de hechos son las siguientes.
+
+```{r}
+
+from <-  today() - years(2)
+to <-  today()
+
+url_head <- str_glue(
+    "https://www.datos.gov.co/resource/qhpu-8ixx.json?$query=
+    SELECT 
+        fecha_corte, 
+        tipo_entidad, 
+        codigo_entidad, 
+        subtipo_negocio, 
+        codigo_negocio, 
+        tipo_participacion, 
+        rendimientos_abonados, 
+        precierre_fondo_dia_t, 
+        numero_unidades_fondo_cierre, 
+        aportes_recibidos, 
+        retiros_redenciones, 
+        anulaciones, 
+        valor_fondo_cierre_dia_t, 
+        numero_inversionistas 
+    where fecha_corte between '{from}T00:00:00.000' and '{to}T00:00:00.000' 
+        and subtipo_negocio not in('7')  
+    LIMIT 100000000") %>% 
+        URLencode()
+
+facts <- fromJSON(url_head) %>% 
+        mutate(across(rendimientos_abonados:numero_inversionistas, as.numeric),
+               fecha_corte = ymd_hms(fecha_corte) %>% 
+                   ymd()) %>%  
+        arrange(fecha_corte,
+                codigo_entidad,
+                subtipo_negocio,
+                codigo_negocio,
+                tipo_participacion) %>% 
+        unite("cod", tipo_entidad, codigo_entidad, subtipo_negocio, codigo_negocio) 
+facts %>% 
+    head %>% 
+    kable()
+
+
+```
+
+Ahora veamos la tabla de dimensiones, en la cual traeremos los valores distintos tanto del código como del nombre de tipo de entidad, nombre entidad, subtipo de negocio y nombre de negocio. Una vez más uniremos los disitndos códigos de los atributos bajo un solo código que nos servirá como llave para unir la esta tabla con la de hechos.
+
+Nuestras 6 primeras observaciones de la tabla de dimensiones son las siguientes.
+
+```{r}
+
+url_head <- str_glue(
+    "https://www.datos.gov.co/resource/qhpu-8ixx.json?$query=
+    SELECT distinct 
+        tipo_entidad, 
+        nombre_tipo_entidad,
+        codigo_entidad, 
+        nombre_entidad,
+        subtipo_negocio, 
+        nombre_subtipo_patrimonio,
+        codigo_negocio,
+        nombre_patrimonio
+    where fecha_corte between '{from}T00:00:00.000' and '{to}T00:00:00.000' 
+        and subtipo_negocio not in('7') 
+    LIMIT 100000000") %>% 
+        URLencode()
+
+dims <- fromJSON(url_head) %>% 
+        unite("cod", tipo_entidad, codigo_entidad, subtipo_negocio, codigo_negocio) 
+dims %>% 
+    head() %>%
+    kable()
+    
+```
+
+## Limpieza e ingeniería de características
+
+Realizaremos los siguientes cambios sobre la tabla de hechos, en primer lugar uniremos las columnas aportes_recibidos, retiros_redenciones y anulaciones, en una sola llamada transaccciones_netas, que representa el flujo neto de transacciones hechas por los clientes.
