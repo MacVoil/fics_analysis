@@ -6,6 +6,8 @@ library(jsonlite)
 library(timetk)
 library(openxlsx)
 
+
+# Facts ########################################################################
 from <- floor_date(today()-years(2), "year")
 to <-  today()
 
@@ -108,4 +110,52 @@ facts_ext_fecha <- facts_completos %>%
            precierre_fondo_dia_t = if_else(is.na(precierre_fondo_dia_t),
                                            valor_fondo_cierre_dia_t,
                                            precierre_fondo_dia_t)) %>%
+    arrange(cod,fecha_corte) %>% 
+    mutate(rendimientos_abonados = round(rendimientos_abonados, 1),
+           precierre_fondo_dia_t = round(precierre_fondo_dia_t, 1),
+           crecimiento_dia = (precierre_fondo_dia_t/(precierre_fondo_dia_t-rendimientos_abonados)-1),
+           crecimiento_dia = if_else(is.infinite(crecimiento_dia)|is.nan(crecimiento_dia),
+                                     0,
+                                     crecimiento_dia)) %>% 
     ungroup()
+
+# Filtros ######################################################################
+
+## Activo (Con movimiento a max fecha) #########################################
+
+facts_activo <- facts_ext_fecha %>% 
+    group_by(cod, tipo_participacion) %>%
+    mutate(max_fecha = max(fecha_corte)) %>% 
+    ungroup() %>% 
+    filter(max_fecha == max(fecha_corte)) %>% 
+    select(-max_fecha)
+
+
+## Largo (Días min con registros) ##############################################
+
+facts_dias <- facts_activo %>% 
+    group_by(cod, tipo_participacion) %>%
+    mutate(n = n()) %>% 
+    ungroup() %>% 
+    filter(n > 365) %>% 
+    select(-n)
+
+## Base (Participación con mayor número de inversionistas) #####################
+
+fondos_base <- facts_dias %>% 
+    filter(fecha_corte == max(fecha_corte)) %>% 
+    group_by(cod) %>% 
+    filter(numero_inversionistas == max(numero_inversionistas)) %>% 
+    filter(numero_inversionistas >0) %>% 
+    filter(valor_fondo_cierre_dia_t == max(valor_fondo_cierre_dia_t)) %>% 
+    ungroup() %>% 
+    select(cod, tipo_participacion) %>% 
+    distinct(cod, .keep_all = TRUE)
+
+facts_base <- facts_dias %>% 
+    semi_join(fondos_base, by = c("cod", "tipo_participacion"))
+
+
+
+
+
