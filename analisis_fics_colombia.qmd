@@ -2,6 +2,9 @@
 title: "Analisis FICs Colombia"
 format: 
   dashboard:
+    theme:
+        - Slate
+        - custom.scss
     nav-buttons:
         - icon: github
           href: https://github.com/
@@ -40,7 +43,7 @@ fics_dims <-  read_parquet("datos_tablero/fics_dims.parquet")
 ## Row {height=70%}
 
 ```{r}
-div(DTOutput('plot1'),style = "font-size:80%")
+span(DTOutput('plot1'),style = "font-size:80%")
 ```
 
 ## Row {height=30%}
