@@ -1,0 +1,98 @@
+--- 
+title: "Analisis FICs Colombia"
+format: 
+  dashboard:
+    nav-buttons:
+        - icon: github
+          href: https://github.com/
+server: shiny
+---
+
+```{r}
+#| context: setup
+library(shiny)
+library(shinyWidgets)
+library(shinydashboard)
+
+options(scipen = 999)
+
+library(tidyverse)
+library(lubridate)
+library(arrow)
+library(DT)
+
+source("scripts/facts_dims_filters.R")
+ 
+fics_disponibles <-  read_parquet("datos_tablero/fics_disponibles.parquet")
+fics_dims <-  read_parquet("datos_tablero/fics_dims.parquet")
+```
+
+
+# Tabla
+
+## {.sidebar}
+
+```{r}
+"1"
+```
+
+
+## Row {height=70%}
+
+```{r}
+div(DTOutput('plot1'),style = "font-size:80%")
+```
+
+## Row {height=30%}
+
+```{r}
+1+1
+```
+
+```{r}
+121+1
+```
+
+# Tabla 2
+
+## {.sidebar}
+
+```{r}
+"2"
+```
+
+
+## Row {height=70%}
+
+```{r}
+"FY"
+```
+
+## Row {height=30%}
+
+```{r}
+2
+```
+
+```{r}
+2
+```
+
+
+```{r}
+#| context: server
+
+output$plot1 <- renderDT(
+        fics_disponibles, 
+        filter = 'none',
+        rownames= FALSE,
+        options = list(dom = 'Brtip',
+                       #scrollY = 750,
+                       #scroller = TRUE,
+                       #scrollX=TRUE,
+                       pageLength = 20
+        )
+    )
+
+```
+
