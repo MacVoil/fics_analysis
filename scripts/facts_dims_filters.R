@@ -193,7 +193,9 @@ get_fics_dims <- function(from = floor_date(today()-years(2), "year"),
         mutate(
             nombre_tipo_entidad = case_when(
                 str_starts(nombre_tipo_entidad, 
-                           "SOCIEDADES ADMINISTRADORAS DE INVERSI") ~ "SOCIEDADES ADMINISTRADORAS DE INVERSION",
+                           "SOCIEDADES ADMINISTRADORAS DE INVERSI") ~ "ADMINISTRADORAS",
+                str_detect(nombre_tipo_entidad, "COMISIONISTAS")  ~ "COMISIONISTAS",
+                str_detect(nombre_tipo_entidad, "FIDUCIARIA")  ~ "FIDUCIARIAS",
                 TRUE ~ nombre_tipo_entidad,),
             cod_empresa = str_extract(cod, "\\d*_\\d*"),
             nombre_entidad = case_when(
@@ -243,3 +245,38 @@ get_fics_dims <- function(from = floor_date(today()-years(2), "year"),
     
 }
 
+# Funciones extra ##############################################################
+
+##  Rentabilidad Volatilidad ###################################################
+
+rent_vol <- function(data, 
+                     periodo = 30,
+                     participacion = tipo_participacion,
+                     fecha = fecha_corte){
+    
+    participacion <- enquo(participacion)
+    fecha <- enquo(fecha)
+    
+    existing_cols <- names(data)
+    
+    data %>% 
+        group_by(cod, !!participacion) %>% 
+        arrange(cod, !!participacion, !!fecha) %>% 
+        mutate(
+            rent = slidify_vec(
+                .x      = crecimiento_dia,
+                .period = periodo,
+                .f      = ~ (prod(.+1)^(365/periodo))-1,
+                .align  = "rigth"),
+            vol = slidify_vec(
+                .x      = crecimiento_dia,
+                .period = periodo,
+                .f      = ~sd(.)*sqrt(365),
+                .align  = "rigth")
+        ) %>%
+        ungroup() %>% 
+        rename_with(
+            .cols = setdiff(names(.), existing_cols),
+            .fn   = ~ paste0(.x, "_", periodo)
+        ) 
+}

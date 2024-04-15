@@ -23,11 +23,39 @@ library(tidyverse)
 library(lubridate)
 library(arrow)
 library(DT)
+library(timetk)
 
 source("scripts/facts_dims_filters.R")
+
+formatThousands <- JS(
+  "function(data) {",
+  "  return '$' + Math.floor(data / 1000000).toLocaleString() + 'M'",
+  "}")
+
+n1 <- 30
+n2 <- 365
  
-fics_disponibles <-  read_parquet("datos_tablero/fics_disponibles.parquet")
+fics_disponibles <-  read_parquet("datos_tablero/fics_disponibles.parquet") %>% 
+  rent_vol(periodo = n1, participacion = Participacion, fecha = Fecha) %>% 
+  rent_vol(periodo = n2, participacion = Participacion, fecha = Fecha)
+  
 fics_dims <-  read_parquet("datos_tablero/fics_dims.parquet")
+
+fics_tabla <- fics_disponibles %>% 
+  filter(Fecha == max(Fecha)) %>% 
+  select(-c(precierre_fondo_dia_t, crecimiento_dia)) %>% 
+  left_join(fics_dims %>% 
+              select(-`Tipo Entidad`), 
+            by = "cod") %>% 
+  select(`Nombre Entidad`,`Fondo`, Participacion,
+         `Valor Cierre`, Rendimientos,
+         `Valor Transacciones`, Inversionistas, Unidades, `Valor Unidad`,
+         dplyr::starts_with("rent"),
+         dplyr::starts_with("vol")) %>% 
+  mutate(`Valor Unidad` = round(`Valor Unidad`, 2))
+
+
+  
 ```
 
 
@@ -40,10 +68,10 @@ fics_dims <-  read_parquet("datos_tablero/fics_dims.parquet")
 ```
 
 
-## Row {height=70%}
+## Row {width=60%}
 
 ```{r}
-span(DTOutput('plot1'),style = "font-size:80%")
+span(DTOutput('plot1'),style = "font-size:75%")
 ```
 
 ## Row {height=30%}
@@ -86,16 +114,34 @@ span(DTOutput('plot1'),style = "font-size:80%")
 #| context: server
 
 output$plot1 <- renderDT(
-        fics_disponibles, 
+  datatable(
+        fics_tabla, 
         filter = 'none',
         rownames= FALSE,
+        plugins = "ellipsis",
+        class = 'nowrap display',
+        extensions = "FixedColumns",
         options = list(dom = 'Brtip',
-                       #scrollY = 750,
-                       #scroller = TRUE,
-                       #scrollX=TRUE,
-                       pageLength = 20
-        )
-    )
+                       pageLength = 20,
+                       fixedColumns = list(leftColumns = 3),
+                       columnDefs = list(
+                         list(
+                           targets = 3:5, 
+                           render = formatThousands),
+                         list(
+                           targets = 0,
+                           render = JS("$.fn.dataTable.render.ellipsis( 20, false )")
+                           ),
+                         list(
+                           targets = 1,
+                           render = JS("$.fn.dataTable.render.ellipsis( 30, false )")
+                           )
+                         )
+                       )
+        ) %>% 
+    formatCurrency(8, currency = "", digits = 2) %>% 
+    formatCurrency(9, digits = 2)
+  )
 
 ```
 

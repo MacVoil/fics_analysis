@@ -40,3 +40,11 @@ table.dataTable.row-border>tbody>tr.selected+tr.selected>td,table.dataTable.disp
 .bslib-sidebar-layout>.collapse-toggle {
     color: #bdc1c4 !important;
 }
+
+table.dataTable tbody tr>.dtfc-fixed-left, table.dataTable tbody tr>.dtfc-fixed-right {
+    background-color: #32363a !important;
+}
+
+table.dataTable thead tr>.dtfc-fixed-left, table.dataTable thead tr>.dtfc-fixed-right, table.dataTable tfoot tr>.dtfc-fixed-left, table.dataTable tfoot tr>.dtfc-fixed-right {
+    background-color: #32363a !important;
+}
