@@ -48,11 +48,12 @@ fics_tabla <- fics_disponibles %>%
               select(-`Tipo Entidad`), 
             by = "cod") %>% 
   select(`Nombre Entidad`,`Fondo`, Participacion,
-         `Valor Cierre`, Rendimientos,
-         `Valor Transacciones`, Inversionistas, Unidades, `Valor Unidad`,
          dplyr::starts_with("rent"),
-         dplyr::starts_with("vol")) %>% 
-  mutate(`Valor Unidad` = round(`Valor Unidad`, 2))
+         dplyr::starts_with("vol"),
+         `Valor Cierre`, Rendimientos,
+         `Valor Transacciones`, Inversionistas, Unidades, `Valor Unidad`) %>% 
+  mutate(`Valor Unidad` = round(`Valor Unidad`, 2)) %>% 
+  set_names(str_to_title(str_replace(names(.), "_", " ")))
 
 
   
@@ -71,6 +72,7 @@ fics_tabla <- fics_disponibles %>%
 ## Row {width=60%}
 
 ```{r}
+cat("title=", "Resumen FICs Vigentes. Fecha de corte: ", as.character(max(fics_disponibles$Fecha)))
 span(DTOutput('plot1'),style = "font-size:75%")
 ```
 
@@ -126,7 +128,7 @@ output$plot1 <- renderDT(
                        fixedColumns = list(leftColumns = 3),
                        columnDefs = list(
                          list(
-                           targets = 3:5, 
+                           targets = 7:9, 
                            render = formatThousands),
                          list(
                            targets = 0,
@@ -139,8 +141,10 @@ output$plot1 <- renderDT(
                          )
                        )
         ) %>% 
-    formatCurrency(8, currency = "", digits = 2) %>% 
-    formatCurrency(9, digits = 2)
+    formatCurrency(11, currency = "", digits = 0) %>% 
+    formatCurrency(12, currency = "", digits = 2) %>% 
+    formatCurrency(13, digits = 2) %>% 
+    formatPercentage(4:7, digits = 2)
   )
 
 ```
