@@ -92,8 +92,8 @@ grid-auto-rows: minmax(0, 1fr);">
 </div><div class="html-fill-item html-fill-container bslib-grid" data-height="30%" style="display: grid; grid-template-rows: minmax(3em, 1fr) minmax(3em, 1fr); grid-auto-columns: minmax(0, 1fr);">
 <div class="card cell html-fill-item html-fill-container bslib-card" data-bslib-card-init="" data-require-bs-caller="card()" data-full-screen="false">
 <div class="card-body html-fill-item html-fill-container">
-<div class="cell-output cell-output-stdout html-fill-item html-fill-container">
-<pre><code>[1] 2</code></pre>
+<div class="cell-output-display html-fill-item html-fill-container">
+<div id="text1" class="shiny-text-output html-fill-item html-fill-container"></div>
 </div>
 </div>
 <bslib-tooltip placement="auto" bsoptions="[]" data-require-bs-version="5" data-require-bs-caller="tooltip()">
@@ -104,8 +104,8 @@ grid-auto-rows: minmax(0, 1fr);">
 </bslib-tooltip><script data-bslib-card-init="">bslib.Card.initializeAllCards();</script></div>
 <div class="card cell html-fill-item html-fill-container bslib-card" data-bslib-card-init="" data-require-bs-caller="card()" data-full-screen="false">
 <div class="card-body html-fill-item html-fill-container">
-<div class="cell-output cell-output-stdout html-fill-item html-fill-container">
-<pre><code>[1] 122</code></pre>
+<div class="cell-output-display html-fill-item html-fill-container">
+<div id="text2" class="shiny-text-output html-fill-item html-fill-container"></div>
 </div>
 </div>
 <bslib-tooltip placement="auto" bsoptions="[]" data-require-bs-version="5" data-require-bs-caller="tooltip()">
@@ -117,8 +117,17 @@ grid-auto-rows: minmax(0, 1fr);">
 </div>
 </div>
 </div></div><aside id="bslib-sidebar-1" class="sidebar html-fill-container html-fill-item"><div class="html-fill-item html-fill-container">
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] "1"</code></pre>
+<div class="cell-output-display">
+<h6 align="center">FILTROS</h6>
+</div>
+<div class="cell-output-display">
+<hr>
+</div>
+<div class="cell-output-display no-overflow-x">
+<div id="numInput1" class="shiny-html-output"></div>
+</div>
+<div class="cell-output-display no-overflow-x">
+<div id="numInput2" class="shiny-html-output"></div>
 </div>
 </div></aside>
 <button class="collapse-toggle" type="button" title="Toggle sidebar" aria-expanded="true" aria-controls="bslib-sidebar-1">
@@ -243,16 +252,44 @@ fics_tabla <- fics_disponibles %>%
 </script>
  
 <script type="application/shiny-prerendered" data-context="server">
+  global <- reactiveValues(numVal1 = 10, numVal2 = 10, numMin = 1, numMax = 100)
+  
+  numVal1 <- reactive({
+    if(!is.null(input$num1) && !is.na(as.numeric(input$num1)) && input$num1 != "-"){
+      if(input$num1 < global$numMin) return(global$numMin)
+      if(input$num1 > global$numMax) return(global$numMax)
+      return(input$num1)
+    }else{
+      return(global$numVal1)
+    }
+  })
+  
+  numVal2 <- reactive({
+    if(!is.null(input$num2) && !is.na(as.numeric(input$num2)) && input$num2 != "-"){
+      if(input$num2 < global$numMin) return(global$numMin)
+      if(input$num2 > global$numMax) return(global$numMax)
+      return(input$num2)
+    }else{
+      return(global$numVal2)
+    }
+  })
+  
+  output$numInput1 <- renderUI(numericInput("num1", "Observations 1:", min = global$numMin, max = global$numMax, value = numVal1()))
+  output$numInput2 <- renderUI(numericInput("num2", "Observations 2:", min = global$numMin, max = global$numMax, value = numVal2()))
+  output$text1 <- renderText(input$num1)
+  output$text2 <- renderText(input$num2)
+
+
 output$plot1 <- renderDT(
   datatable(
         fics_tabla, 
-        filter = 'none',
+        filter = "top",
         rownames= FALSE,
         plugins = "ellipsis",
         class = 'nowrap display',
         extensions = "FixedColumns",
         options = list(dom = 'Brtip',
-                       pageLength = 20,
+                       pageLength = 19,
                        fixedColumns = list(leftColumns = 3),
                        columnDefs = list(
                          list(

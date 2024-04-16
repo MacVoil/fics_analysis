@@ -65,7 +65,10 @@ fics_tabla <- fics_disponibles %>%
 ## {.sidebar}
 
 ```{r}
-"1"
+h6("FILTROS" , align = "center")
+tags$hr()
+uiOutput("numInput1")
+uiOutput("numInput2")
 ```
 
 
@@ -79,11 +82,11 @@ span(DTOutput('plot1'),style = "font-size:75%")
 ## Row {height=30%}
 
 ```{r}
-1+1
+textOutput("text1")
 ```
 
 ```{r}
-121+1
+textOutput("text2")
 ```
 
 # Tabla 2
@@ -115,6 +118,34 @@ span(DTOutput('plot1'),style = "font-size:75%")
 ```{r}
 #| context: server
 
+  global <- reactiveValues(numVal1 = 10, numVal2 = 10, numMin = 1, numMax = 100)
+  
+  numVal1 <- reactive({
+    if(!is.null(input$num1) && !is.na(as.numeric(input$num1)) && input$num1 != "-"){
+      if(input$num1 < global$numMin) return(global$numMin)
+      if(input$num1 > global$numMax) return(global$numMax)
+      return(input$num1)
+    }else{
+      return(global$numVal1)
+    }
+  })
+  
+  numVal2 <- reactive({
+    if(!is.null(input$num2) && !is.na(as.numeric(input$num2)) && input$num2 != "-"){
+      if(input$num2 < global$numMin) return(global$numMin)
+      if(input$num2 > global$numMax) return(global$numMax)
+      return(input$num2)
+    }else{
+      return(global$numVal2)
+    }
+  })
+  
+  output$numInput1 <- renderUI(numericInput("num1", "Observations 1:", min = global$numMin, max = global$numMax, value = numVal1()))
+  output$numInput2 <- renderUI(numericInput("num2", "Observations 2:", min = global$numMin, max = global$numMax, value = numVal2()))
+  output$text1 <- renderText(input$num1)
+  output$text2 <- renderText(input$num2)
+
+
 output$plot1 <- renderDT(
   datatable(
         fics_tabla, 
@@ -124,7 +155,7 @@ output$plot1 <- renderDT(
         class = 'nowrap display',
         extensions = "FixedColumns",
         options = list(dom = 'Brtip',
-                       pageLength = 20,
+                       pageLength = 19,
                        fixedColumns = list(leftColumns = 3),
                        columnDefs = list(
                          list(
