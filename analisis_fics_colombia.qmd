@@ -24,6 +24,8 @@ library(lubridate)
 library(arrow)
 library(DT)
 library(timetk)
+library(plotly)
+library(ggdark)
 
 source("scripts/facts_dims_filters.R")
 
@@ -32,28 +34,7 @@ formatThousands <- JS(
   "  return '$' + Math.floor(data / 1000000).toLocaleString() + 'M'",
   "}")
 
-n1 <- 30
-n2 <- 365
- 
-fics_disponibles <-  read_parquet("datos_tablero/fics_disponibles.parquet") %>% 
-  rent_vol(periodo = n1, participacion = Participacion, fecha = Fecha) %>% 
-  rent_vol(periodo = n2, participacion = Participacion, fecha = Fecha)
-  
-fics_dims <-  read_parquet("datos_tablero/fics_dims.parquet")
-
-fics_tabla <- fics_disponibles %>% 
-  filter(Fecha == max(Fecha)) %>% 
-  select(-c(precierre_fondo_dia_t, crecimiento_dia)) %>% 
-  left_join(fics_dims %>% 
-              select(-`Tipo Entidad`), 
-            by = "cod") %>% 
-  select(`Nombre Entidad`,`Fondo`, Participacion,
-         dplyr::starts_with("rent"),
-         dplyr::starts_with("vol"),
-         `Valor Cierre`, Rendimientos,
-         `Valor Transacciones`, Inversionistas, Unidades, `Valor Unidad`) %>% 
-  mutate(`Valor Unidad` = round(`Valor Unidad`, 2)) %>% 
-  set_names(str_to_title(str_replace(names(.), "_", " ")))
+fics_disponibles <-  read_parquet("datos_tablero/fics_disponibles.parquet") 
 
 
   
@@ -82,11 +63,11 @@ span(DTOutput('plot1'),style = "font-size:75%")
 ## Row {height=30%}
 
 ```{r}
-textOutput("text1")
+plotlyOutput('plotlyplot')
 ```
 
 ```{r}
-textOutput("text2")
+plotlyOutput('plotlyplot2')
 ```
 
 # Tabla 2
@@ -107,7 +88,7 @@ textOutput("text2")
 ## Row {height=30%}
 
 ```{r}
-2
+plotlyOutput('plotlyplot3')
 ```
 
 ```{r}
@@ -118,7 +99,7 @@ textOutput("text2")
 ```{r}
 #| context: server
 
-  global <- reactiveValues(numVal1 = 10, numVal2 = 10, numMin = 1, numMax = 100)
+  global <- reactiveValues(numVal1 = 30, numVal2 = 365, numMin = 1, numMax = 365)
   
   numVal1 <- reactive({
     if(!is.null(input$num1) && !is.na(as.numeric(input$num1)) && input$num1 != "-"){
@@ -146,9 +127,39 @@ textOutput("text2")
   output$text2 <- renderText(input$num2)
 
 
+fics_disponibles2 <-  reactive({
+  fics_disponibles %>% 
+    rename(Particip. = Participacion) %>% 
+    rent_vol(periodo = input$num1, participacion = Particip., fecha = Fecha) %>% 
+    rent_vol(periodo = input$num2, participacion = Particip., fecha = Fecha)
+  })
+  
+fics_dims <-  read_parquet("datos_tablero/fics_dims.parquet")
+
+
+
+
+fics_tabla <- reactive({
+  
+  fics_disponibles2() %>% 
+  filter(Fecha == max(Fecha)) %>% 
+  select(-c(precierre_fondo_dia_t, crecimiento_dia)) %>% 
+  left_join(fics_dims %>% 
+              select(-`Tipo Entidad`), 
+            by = "cod") %>% 
+  select(`Nombre Entidad`,`Fondo`, Particip.,
+         dplyr::starts_with("rent"),
+         dplyr::starts_with("vol"),
+         `Valor Cierre`, Rendimientos,
+         `Valor Transacciones`, Inversionistas, Unidades, `Valor Unidad`) %>% 
+  mutate(`Valor Unidad` = round(`Valor Unidad`, 2)) %>% 
+  set_names(str_to_title(str_replace(names(.), "_", " ")))
+  
+})
+
 output$plot1 <- renderDT(
   datatable(
-        fics_tabla, 
+        fics_tabla(), 
         filter = 'none',
         rownames= FALSE,
         plugins = "ellipsis",
@@ -177,6 +188,54 @@ output$plot1 <- renderDT(
     formatCurrency(13, digits = 2) %>% 
     formatPercentage(4:7, digits = 2)
   )
+
+output$plotlyplot <- renderPlotly(
+ fics_disponibles2() %>% 
+   filter(cod == "5_16_1_10936" & Particip. == "501") %>% 
+   select(1,12) %>%
+   drop_na() %>% 
+   plot_time_series(.date_var = Fecha, .value = !!rlang::sym(names(fics_disponibles2())[12]), .smooth = FALSE)
+  )
+
+
+output$plotlyplot2 <- renderPlotly(
+ fics_disponibles2() %>% 
+   filter(cod == "5_16_1_10936" & Particip. == "501") %>% 
+   select(1,14) %>% 
+   drop_na() %>% 
+   plot_time_series(.date_var = Fecha, .value = !!rlang::sym(names(fics_disponibles2())[14]), .smooth = FALSE)
+  )
+
+
+output$plotlyplot3 <- renderPlotly({
+  
+  ptl <- reactive(fics_disponibles2() %>% 
+                    filter((cod == "5_16_1_10936" & Particip. == "501")|(cod == "5_16_1_18462" & Particip. == "513")) %>% 
+                    drop_na() %>% 
+                    ggplot(aes(x = Fecha, y = !!rlang::sym(names(fics_disponibles2())[14]), colour = cod)) +
+                    geom_line() +
+                    scale_x_date(date_labels =  "%b %Y") +
+                    theme(panel.background = element_blank(),
+                          axis.line = element_line(colour = "#bdc1c4"),
+                          axis.title.x=element_blank(),
+                          axis.title.y=element_blank(),
+                          axis.text.x=element_text(colour ="#bdc1c4"),
+                          axis.text.y=element_text(colour ="#bdc1c4")) +
+                    scale_color_manual(values= c("#708090", "#8B0000", "#2F4F4F", "#DAA520", "#483D8B", "#B8860B", "#556B2F", "#FFA500", "#8B4513", "#1E90FF"))
+                  )
+  
+  ptl() %>% 
+    ggplotly() %>%
+    layout(plot_bgcolor  = "transparent",
+           paper_bgcolor = "transparent",
+           xaxis = list(showgrid = F),
+           yaxis = list(showgrid = F), 
+           legend = list(title = list(text = ''),
+                         bgcolor = 'rgba(0,0,0,0)',
+                         font = list(color = '#bdc1c4'))
+           )
+
+  })
 
 ```
 
