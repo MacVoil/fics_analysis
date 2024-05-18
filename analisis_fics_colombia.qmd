@@ -63,11 +63,11 @@ span(DTOutput('plot1'),style = "font-size:75%")
 ## Row {height=30%}
 
 ```{r}
-plotlyOutput('plotlyplot')
+plotlyOutput('grafica1')
 ```
 
 ```{r}
-plotlyOutput('plotlyplot2')
+plotlyOutput('nadaparecido')
 ```
 
 # Tabla 2
@@ -82,13 +82,13 @@ plotlyOutput('plotlyplot2')
 ## Row {height=70%}
 
 ```{r}
-"FY"
+2
 ```
 
 ## Row {height=30%}
 
 ```{r}
-plotlyOutput('plotlyplot3')
+2
 ```
 
 ```{r}
@@ -135,9 +135,6 @@ fics_disponibles2 <-  reactive({
   })
   
 fics_dims <-  read_parquet("datos_tablero/fics_dims.parquet")
-
-
-
 
 fics_tabla <- reactive({
   
@@ -189,42 +186,41 @@ output$plot1 <- renderDT(
     formatPercentage(4:7, digits = 2)
   )
 
-output$plotlyplot <- renderPlotly(
- fics_disponibles2() %>% 
-   filter(cod == "5_16_1_10936" & Particip. == "501") %>% 
-   select(1,12) %>%
-   drop_na() %>% 
-   plot_time_series(.date_var = Fecha, .value = !!rlang::sym(names(fics_disponibles2())[12]), .smooth = FALSE)
-  )
 
+fics_tabla_filtered <- reactive({
+  fics_disponibles2() %>% 
+  filter(Fecha == max(Fecha)) %>% 
+    `[`(input$plot1_rows_selected,) %>% 
+    select(cod, Particip.)
+})
 
-output$plotlyplot2 <- renderPlotly(
- fics_disponibles2() %>% 
-   filter(cod == "5_16_1_10936" & Particip. == "501") %>% 
-   select(1,14) %>% 
-   drop_na() %>% 
-   plot_time_series(.date_var = Fecha, .value = !!rlang::sym(names(fics_disponibles2())[14]), .smooth = FALSE)
-  )
-
-
-output$plotlyplot3 <- renderPlotly({
+output$grafica1 <- renderPlotly({
   
-  ptl <- reactive(fics_disponibles2() %>% 
-                    filter((cod == "5_16_1_10936" & Particip. == "501")|(cod == "5_16_1_18462" & Particip. == "513")) %>% 
-                    drop_na() %>% 
-                    ggplot(aes(x = Fecha, y = !!rlang::sym(names(fics_disponibles2())[14]), colour = cod)) +
-                    geom_line() +
-                    scale_x_date(date_labels =  "%b %Y") +
-                    theme(panel.background = element_blank(),
-                          axis.line = element_line(colour = "#bdc1c4"),
-                          axis.title.x=element_blank(),
-                          axis.title.y=element_blank(),
-                          axis.text.x=element_text(colour ="#bdc1c4"),
-                          axis.text.y=element_text(colour ="#bdc1c4")) +
-                    scale_color_manual(values= c("#708090", "#8B0000", "#2F4F4F", "#DAA520", "#483D8B", "#B8860B", "#556B2F", "#FFA500", "#8B4513", "#1E90FF"))
-                  )
-  
-  ptl() %>% 
+  grafica_gg <- fics_disponibles2() %>% 
+              semi_join(fics_tabla_filtered(), by = join_by(cod, Particip.))%>% 
+              mutate(cod_ext = str_c(cod, Particip.)) %>% 
+              select(1,12,cod_ext) %>% 
+              drop_na() %>% 
+    ggplot(aes(x = Fecha, y = !!rlang::sym(names(fics_disponibles2())[12]), colour = cod_ext)) +
+    geom_line() +
+    scale_x_date(date_labels =  "%b %Y") +
+    theme(panel.background = element_blank(),
+          axis.line = element_line(colour = "#bdc1c4"),
+          axis.title.x=element_blank(),
+          axis.title.y=element_blank(),
+          axis.text.x=element_text(colour ="#bdc1c4"),
+          axis.text.y=element_text(colour ="#bdc1c4")) +
+    scale_color_manual(values= c("#708090", 
+                                 "#8B0000",
+                                 "#2F4F4F",
+                                 "#DAA520",
+                                 "#483D8B",
+                                 "#B8860B",
+                                 "#556B2F",
+                                 "#FFA500",
+                                 "#8B4513",
+                                 "#1E90FF"))
+  grafica_gg %>% 
     ggplotly() %>%
     layout(plot_bgcolor  = "transparent",
            paper_bgcolor = "transparent",
@@ -232,10 +228,50 @@ output$plotlyplot3 <- renderPlotly({
            yaxis = list(showgrid = F), 
            legend = list(title = list(text = ''),
                          bgcolor = 'rgba(0,0,0,0)',
-                         font = list(color = '#bdc1c4'))
-           )
+                         font = list(color = '#bdc1c4')))
 
+
+            
   })
 
+output$nadaparecido <- renderPlotly({
+  
+  nounachart <- fics_disponibles2() %>% 
+              semi_join(fics_tabla_filtered(), by = join_by(cod, Particip.))%>% 
+              mutate(cod_ext = str_c(cod, Particip.)) %>% 
+              select(1,14,cod_ext) %>% 
+              drop_na() %>% 
+    ggplot(aes(x = Fecha, y = !!rlang::sym(names(fics_disponibles2())[14]), colour = cod_ext)) +
+    geom_line() +
+    scale_x_date(date_labels =  "%b %Y") +
+    theme(panel.background = element_blank(),
+          axis.line = element_line(colour = "#bdc1c4"),
+          axis.title.x=element_blank(),
+          axis.title.y=element_blank(),
+          axis.text.x=element_text(colour ="#bdc1c4"),
+          axis.text.y=element_text(colour ="#bdc1c4")) +
+    scale_color_manual(values= c("#708090", 
+                                 "#8B0000",
+                                 "#2F4F4F",
+                                 "#DAA520",
+                                 "#483D8B",
+                                 "#B8860B",
+                                 "#556B2F",
+                                 "#FFA500",
+                                 "#8B4513",
+                                 "#1E90FF"))
+  nounachart %>% 
+    ggplotly() %>%
+    layout(plot_bgcolor  = "transparent",
+           paper_bgcolor = "transparent",
+           xaxis = list(showgrid = F),
+           yaxis = list(showgrid = F), 
+           legend = list(title = list(text = ''),
+                         bgcolor = 'rgba(0,0,0,0)',
+                         font = list(color = '#bdc1c4')))
+
+
+            
+  })
 ```
 
