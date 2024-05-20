@@ -280,3 +280,33 @@ rent_vol <- function(data,
             .fn   = ~ paste0(.x, "_", periodo)
         ) 
 }
+
+
+##  Rentabilidad Bruta ###################################################
+
+rent_brut <- function(data, 
+                     periodo = 30,
+                     participacion = tipo_participacion,
+                     fecha = fecha_corte){
+    
+    participacion <- enquo(participacion)
+    fecha <- enquo(fecha)
+    
+    existing_cols <- names(data)
+    
+    data %>% 
+        group_by(cod, !!participacion) %>% 
+        arrange(cod, !!participacion, !!fecha) %>% 
+        mutate(
+            rent_brut = slidify_vec(
+                .x      = crecimiento_dia,
+                .period = periodo,
+                .f      = ~ prod(.+1)-1,
+                .align  = "rigth")
+        ) %>%
+        ungroup() %>% 
+        rename_with(
+            .cols = setdiff(names(.), existing_cols),
+            .fn   = ~ paste0(.x, "_", periodo)
+        ) 
+}
